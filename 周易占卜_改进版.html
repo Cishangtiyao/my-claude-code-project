@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>《周易》过揲法模拟器</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="yijing_data.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap" rel="stylesheet">
@@ -186,23 +187,23 @@ class="btn-cast bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-7
 <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
 <!-- 本卦 -->
 <div class="fade-in-up" style="animation-delay: 0.2s;">
-<div class="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 p-6 rounded-xl flex flex-col items-center shadow-2xl h-full">
+<div class="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 p-6 rounded-xl flex flex-col items-center shadow-2xl">
 <h3 class="text-2xl font-bold text-amber-400 mb-6 flex items-center">
 <span class="mr-2">☰</span> 本卦
 </h3>
 <div id="originalHexagramDisplay" class="w-full mb-6"></div>
-<div id="originalHexagramInfo" class="text-center mt-auto"></div>
+<div id="originalHexagramInfo" class="text-left w-full max-h-[600px] overflow-y-auto custom-scrollbar"></div>
 </div>
 </div>
 
 <!-- 之卦 -->
 <div class="fade-in-up" style="animation-delay: 0.3s;">
-<div class="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 p-6 rounded-xl flex flex-col items-center shadow-2xl h-full">
+<div class="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 p-6 rounded-xl flex flex-col items-center shadow-2xl">
 <h3 class="text-2xl font-bold text-amber-400 mb-6 flex items-center">
 <span class="mr-2">☷</span> 之卦
 </h3>
 <div id="changedHexagramDisplay" class="w-full mb-6"></div>
-<div id="changedHexagramInfo" class="text-center mt-auto"></div>
+<div id="changedHexagramInfo" class="text-left w-full max-h-[600px] overflow-y-auto custom-scrollbar"></div>
 </div>
 </div>
 </div>
@@ -480,24 +481,84 @@ displayDiv.appendChild(lineDiv);
 const hexagramInfo = getHexagramInfo(lines);
 
 if (hexagramInfo) {
+// 获取卦辞和爻辞数据
+const yijingText = yijingTexts[hexagramInfo.number];
+let extraInfo = '';
 if (isSameAsOriginal) {
-infoDiv.innerHTML = `
-<div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-<p class="text-3xl font-bold text-amber-300 mb-2">${hexagramInfo.name}</p>
-<p class="text-gray-400 text-lg mb-1">${hexagramInfo.description}</p>
-<p class="text-sm text-gray-500">第 ${hexagramInfo.number} 卦</p>
-<p class="text-amber-600 mt-3 text-sm border-t border-gray-700 pt-3">⚠️ 无变爻，之卦同本卦</p>
+extraInfo = '<p class="text-amber-600 mt-3 text-sm border-t border-gray-700 pt-3">⚠️ 无变爻，之卦同本卦</p>';
+}
+
+// 构建卦辞显示
+let guaciHTML = '';
+if (yijingText) {
+guaciHTML = `
+<div class="mt-4 border-t border-gray-700 pt-4">
+<h4 class="text-amber-400 font-bold mb-2">卦辞</h4>
+<p class="text-gray-300 leading-relaxed">${yijingText.guaci}</p>
 </div>
 `;
-} else {
-infoDiv.innerHTML = `
-<div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
-<p class="text-3xl font-bold text-amber-300 mb-2">${hexagramInfo.name}</p>
-<p class="text-gray-400 text-lg mb-1">${hexagramInfo.description}</p>
-<p class="text-sm text-gray-500">第 ${hexagramInfo.number} 卦</p>
+
+// 如果是本卦，显示彖传和象传
+if (type === 'original') {
+guaciHTML += `
+<div class="mt-3">
+<h4 class="text-amber-400 font-bold mb-2">《彖》曰</h4>
+<p class="text-gray-300 text-sm leading-relaxed">${yijingText.tuan}</p>
+</div>
+<div class="mt-3">
+<h4 class="text-amber-400 font-bold mb-2">《象》曰</h4>
+<p class="text-gray-300 text-sm leading-relaxed">${yijingText.daxiang}</p>
 </div>
 `;
 }
+
+// 显示变爻的爻辞
+guaciHTML += '<div class="mt-4 border-t border-gray-700 pt-4">';
+guaciHTML += '<h4 class="text-amber-400 font-bold mb-3">爻辞</h4>';
+
+// 找出变爻（lines数组从初爻到上爻，index 0-5对应第1-6爻）
+lines.forEach((lineValue, index) => {
+if (type === 'original' && (lineValue === 6 || lineValue === 9)) {
+// 这是变爻，显示其爻辞
+if (yijingText.yaos && yijingText.yaos[index]) {
+const yao = yijingText.yaos[index];
+guaciHTML += `
+<div class="mb-3 bg-gray-800/50 p-3 rounded-lg border-l-4 border-red-500">
+<p class="text-red-400 font-bold mb-1">${yao.name}（变爻）</p>
+<p class="text-gray-300 text-sm mb-1">${yao.text}</p>
+<p class="text-gray-500 text-xs">《象》曰：${yao.xiang}</p>
+</div>
+`;
+}
+}
+});
+
+// 如果没有变爻，显示所有爻辞
+if (type === 'original' && !lines.some(l => l === 6 || l === 9)) {
+yijingText.yaos.forEach((yao, idx) => {
+if (idx < 6) { // 只显示六爻，不显示用九/用六
+guaciHTML += `
+<div class="mb-2 text-sm">
+<span class="text-amber-300 font-medium">${yao.name}：</span>
+<span class="text-gray-400">${yao.text}</span>
+</div>
+`;
+}
+});
+}
+
+guaciHTML += '</div>';
+}
+
+infoDiv.innerHTML = `
+<div class="bg-gray-900/50 rounded-lg p-4 border border-gray-700">
+<p class="text-3xl font-bold text-amber-300 mb-2">${hexagramInfo.name}</p>
+<p class="text-gray-400 text-lg mb-1">${hexagramInfo.description}</p>
+<p class="text-sm text-gray-500">第 ${hexagramInfo.number} 卦</p>
+${extraInfo}
+${guaciHTML}
+</div>
+`;
 } else {
 infoDiv.innerHTML = `<p class="text-red-400 text-lg">⚠️ 未找到卦象数据</p>`;
 }
