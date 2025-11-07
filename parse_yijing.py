@@ -20,6 +20,19 @@ def parse_yijing(filename):
         57: '巽', 58: '兑', 59: '涣', 60: '节', 61: '中孚', 62: '小过', 63: '既济', 64: '未济'
     }
 
+    # 繁简对照（只列出txt中使用繁体的卦名）
+    traditional_map = {
+        '師': '师', '離': '离', '豐': '丰', '訟': '讼', '謙': '谦',
+        '隨': '随', '蠱': '蛊', '臨': '临', '觀': '观', '賁': '贲',
+        '剝': '剥', '復': '复', '頤': '颐', '過': '过', '離': '离',
+        '鹹': '咸', '恆': '恒', '遯': '遁', '壯': '壮', '晉': '晋',
+        '夷': '夷', '睽': '睽', '蹇': '蹇', '損': '损', '益': '益',
+        '夬': '夬', '姤': '姤', '萃': '萃', '陞': '升', '困': '困',
+        '革': '革', '鼎': '鼎', '震': '震', '艮': '艮', '漸': '渐',
+        '歸': '归', '豐': '丰', '旅': '旅', '巽': '巽', '兌': '兑',
+        '渙': '涣', '節': '节', '孚': '孚', '過': '过', '濟': '济'
+    }
+
     with open(filename, 'r', encoding='utf-8') as f:
         lines = [line.rstrip('\n') for line in f.readlines()]
 
@@ -46,15 +59,27 @@ def parse_yijing(filename):
             # 使用预定义的卦名
             name = hexagram_names.get(number, '')
 
-            # 提取卦辞：去掉开头的卦名部分
+            # 提取卦辞：去掉开头的卦名部分（可能是繁体）
+            # 尝试匹配简体卦名
+            name_len = len(name)
+            guaci = rest
+
+            # 检查开头是否是卦名（简体或繁体）
             if rest.startswith(name):
-                guaci = rest[len(name):].lstrip('，、 ')
+                # 简体匹配
+                guaci = rest[name_len:].lstrip('，、 ')
             else:
-                # 如果无法匹配，尝试按逗号分割
-                if '，' in rest:
-                    guaci = rest.split('，', 1)[1]
-                else:
-                    guaci = rest
+                # 尝试繁体匹配
+                # 取开头1-2个字符，看是否是卦名的繁体
+                for length in [2, 1]:  # 先尝试2个字的卦名，再尝试1个字
+                    if len(rest) >= length:
+                        prefix = rest[:length]
+                        # 转换繁体为简体
+                        simplified = ''.join(traditional_map.get(c, c) for c in prefix)
+                        if simplified == name:
+                            # 找到匹配，去掉卦名部分
+                            guaci = rest[length:].lstrip('，、 ')
+                            break
 
             current_hexagram = {
                 'number': number,
