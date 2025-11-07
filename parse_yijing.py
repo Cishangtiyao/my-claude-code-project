@@ -8,6 +8,18 @@ import re
 import json
 
 def parse_yijing(filename):
+    # 64卦的正确卦名（从HTML中的hexagramData提取）
+    hexagram_names = {
+        1: '乾', 2: '坤', 3: '屯', 4: '蒙', 5: '需', 6: '讼', 7: '师', 8: '比',
+        9: '小畜', 10: '履', 11: '泰', 12: '否', 13: '同人', 14: '大有', 15: '谦', 16: '豫',
+        17: '随', 18: '蛊', 19: '临', 20: '观', 21: '噬嗑', 22: '贲', 23: '剥', 24: '复',
+        25: '无妄', 26: '大畜', 27: '颐', 28: '大过', 29: '坎', 30: '离', 31: '咸', 32: '恒',
+        33: '遁', 34: '大壮', 35: '晋', 36: '明夷', 37: '家人', 38: '睽', 39: '蹇', 40: '解',
+        41: '损', 42: '益', 43: '夬', 44: '姤', 45: '萃', 46: '升', 47: '困', 48: '井',
+        49: '革', 50: '鼎', 51: '震', 52: '艮', 53: '渐', 54: '归妹', 55: '丰', 56: '旅',
+        57: '巽', 58: '兑', 59: '涣', 60: '节', 61: '中孚', 62: '小过', 63: '既济', 64: '未济'
+    }
+
     with open(filename, 'r', encoding='utf-8') as f:
         lines = [line.rstrip('\n') for line in f.readlines()]
 
@@ -20,10 +32,10 @@ def parse_yijing(filename):
         line = lines[i]
 
         # 匹配卦的开始：数字 + 卦名 + 卦辞
-        # 例如：1   乾，元亨利貞。
-        # 特殊处理"師貞"这种情况，卦名只是"師"
+        # 排除爻辞行（以"初九"、"初六"等开头）和传文行
         match = re.match(r'^(\d+)\.?\s+\u3000*(.+)$', line)
-        if match and '《' not in line and '象' not in line and '初' not in line:
+        is_yao_line = re.match(r'^(初[九六]|[九六][二三四五]|上[九六]|用[九六])', line)
+        if match and '《' not in line and not is_yao_line:
             # 保存上一卦
             if current_hexagram:
                 hexagrams.append(current_hexagram)
@@ -31,24 +43,23 @@ def parse_yijing(filename):
             number = int(match.group(1))
             rest = match.group(2).strip()
 
-            # 分离卦名和卦辞
-            # 通常格式：卦名，卦辞
-            if '，' in rest:
-                parts = rest.split('，', 1)
-                name = parts[0].strip()
-                # 处理"師貞"这种情况
-                if len(name) > 1 and name[-1] in ['貞', '亨']:
-                    # 可能是卦名+卦辞连在一起
-                    name = name[0] if len(name) == 2 else name
-                guaci = parts[1].strip() if len(parts) > 1 else ''
+            # 使用预定义的卦名
+            name = hexagram_names.get(number, '')
+
+            # 提取卦辞：去掉开头的卦名部分
+            if rest.startswith(name):
+                guaci = rest[len(name):].lstrip('，、 ')
             else:
-                name = rest
-                guaci = ''
+                # 如果无法匹配，尝试按逗号分割
+                if '，' in rest:
+                    guaci = rest.split('，', 1)[1]
+                else:
+                    guaci = rest
 
             current_hexagram = {
                 'number': number,
                 'name': name,
-                'guaci': rest.split('，', 1)[1] if '，' in rest else rest,
+                'guaci': guaci,
                 'tuan': '',
                 'daxiang': '',
                 'yaos': []
